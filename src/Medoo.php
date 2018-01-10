@@ -30,12 +30,13 @@ class Medoo
     protected $type;
     protected $prefix;
     protected $statement;
-    protected $option = [];
-    protected $logs = [];
-    protected $logging = false;
-    protected $debug_mode = false;
-    protected $guid = 0;
-    protected $table_quote = '"';
+    protected $option       = [];
+    protected $logs         = [];
+    protected $logging      = false;
+    protected $debug_mode   = false;
+    protected $guid         = 0;
+    protected $table_quote  = '`';
+    protected $column_quote = '`';
 
     public function __construct($options = null)
     {
@@ -65,8 +66,10 @@ class Medoo
 
         if (isset($options['table_quote'])) {
             $this->table_quote = $options['table_quote'];
-        } else {
-            $commands = [];
+        }
+
+        if (isset($options['column_quote'])) {
+            $this->column_quote = $options['column_quote'];
         }
 
         if (isset($options['dsn'])) {
@@ -376,10 +379,10 @@ class Medoo
     protected function columnQuote($string)
     {
         if (strpos($string, '.') !== false) {
-            return '"' . $this->prefix . str_replace('.', '"."', $string) . '"';
+            return $this->table_quote . $this->prefix . str_replace('.', $this->table_quote . '.' . $this->column_quote, $string) . $this->column_quote;
         }
 
-        return '"' . $string . '"';
+        return $this->column_quote . $string . $this->column_quote;
     }
 
     protected function columnPush(&$columns, &$map)
@@ -482,12 +485,12 @@ class Medoo
                         $condition = $column . ' ' . $operator . ' ';
 
                         if (is_numeric($value)) {
-                            $condition       .= $map_key;
+                            $condition     .= $map_key;
                             $map[$map_key] = [$value, PDO::PARAM_INT];
                         } elseif ($raw = $this->buildRaw($value, $map)) {
                             $condition .= $raw;
                         } else {
-                            $condition       .= $map_key;
+                            $condition     .= $map_key;
                             $map[$map_key] = [$value, PDO::PARAM_STR];
                         }
 
@@ -502,7 +505,7 @@ class Medoo
                                 $placeholders = [];
 
                                 foreach ($value as $index => $item) {
-                                    $placeholders[]                  = $map_key . $index . '_i';
+                                    $placeholders[]                = $map_key . $index . '_i';
                                     $map[$map_key . $index . '_i'] = $this->typeMap($item, gettype($item));
                                 }
 
@@ -519,7 +522,7 @@ class Medoo
                             case 'double':
                             case 'boolean':
                             case 'string':
-                                $stack[]         = $column . ' != ' . $map_key;
+                                $stack[]       = $column . ' != ' . $map_key;
                                 $map[$map_key] = $this->typeMap($value, $type);
                                 break;
                         }
@@ -547,7 +550,7 @@ class Medoo
                                 $item = '%' . $item . '%';
                             }
 
-                            $like_clauses[]                 = $column . ($operator === '!~' ? ' NOT' : '') . ' LIKE ' . $map_key . 'L' . $index;
+                            $like_clauses[]               = $column . ($operator === '!~' ? ' NOT' : '') . ' LIKE ' . $map_key . 'L' . $index;
                             $map[$map_key . 'L' . $index] = [$item, PDO::PARAM_STR];
                         }
 
@@ -566,7 +569,7 @@ class Medoo
                             $map[$map_key . 'b'] = [$value[1], $data_type];
                         }
                     } elseif ($operator === 'REGEXP') {
-                        $stack[]         = $column . ' REGEXP ' . $map_key;
+                        $stack[]       = $column . ' REGEXP ' . $map_key;
                         $map[$map_key] = [$value, PDO::PARAM_STR];
                     }
                 } else {
@@ -579,7 +582,7 @@ class Medoo
                             $placeholders = [];
 
                             foreach ($value as $index => $item) {
-                                $placeholders[]                  = $map_key . $index . '_i';
+                                $placeholders[]                = $map_key . $index . '_i';
                                 $map[$map_key . $index . '_i'] = $this->typeMap($item, gettype($item));
                             }
 
@@ -596,7 +599,7 @@ class Medoo
                         case 'double':
                         case 'boolean':
                         case 'string':
-                            $stack[]         = $column . ' = ' . $map_key;
+                            $stack[]       = $column . ' = ' . $map_key;
                             $map[$map_key] = $this->typeMap($value, $type);
                             break;
                     }
@@ -639,8 +642,8 @@ class Medoo
                         $mode = ' ' . $mode_array[$MATCH['mode']];
                     }
 
-                    $columns         = implode(array_map([$this, 'columnQuote'], $MATCH['columns']), ', ');
-                    $map_key         = $this->mapKey();
+                    $columns       = implode(array_map([$this, 'columnQuote'], $MATCH['columns']), ', ');
+                    $map_key       = $this->mapKey();
                     $map[$map_key] = [$MATCH['keyword'], PDO::PARAM_STR];
 
                     $where_clause .= ($where_clause !== '' ? ' AND ' : ' WHERE') . ' MATCH (' . $columns . ') AGAINST (' . $map_key . $mode . ')';
