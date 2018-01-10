@@ -44,7 +44,7 @@
             "Medoo\\": "/src"
         }
     },
-    "conflicts": {
+    "conflict": {
         "catfan/medoo": "*"
     }
 }
